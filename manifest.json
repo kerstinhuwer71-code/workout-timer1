@@ -2,7 +2,7 @@
   "name": "Workout Timer",
   "short_name": "Workout",
   "description": "Bodyweight Workout Timer mit Stoppuhr",
-  "start_url": "./Index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f0f0f0",
