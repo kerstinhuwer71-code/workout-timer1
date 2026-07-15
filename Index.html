@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#333333">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>Workout Timer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      gap: 14px;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      color: #333;
+      letter-spacing: 1px;
+    }
+
+    /* ── Exercise list ── */
+    .exercise-panel {
+      width: 100%;
+      max-width: 360px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #333;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-add {
+      background: #2e7d32;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .exercise-list {
+      list-style: none;
+      max-height: 190px;
+      overflow-y: auto;
+    }
+
+    .exercise-list li {
+      display: flex;
+      align-items: center;
+      padding: 9px 14px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: background 0.15s;
+      gap: 8px;
+    }
+
+    .exercise-list li:last-child { border-bottom: none; }
+    .exercise-list li:hover { background: #f5f5f5; }
+
+    .exercise-list li.active {
+      background: #e8f5e9;
+      font-weight: bold;
+      color: #2e7d32;
+    }
+
+    .exercise-list li.done {
+      color: #aaa;
+      text-decoration: line-through;
+    }
+
+    .ex-index {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #ddd;
+      color: #555;
+      font-size: 0.72rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    li.active .ex-index  { background: #2e7d32; color: #fff; }
+    li.done  .ex-index   { background: #bbb;    color: #fff; }
+
+    .ex-name { flex: 1; font-size: 0.9rem; }
+
+    .ex-time {
+      font-size: 0.8rem;
+      color: #888;
+      min-width: 44px;
+      text-align: right;
+    }
+
+    li.active .ex-time { color: #2e7d32; font-weight: bold; }
+
+    .btn-del {
+      background: none;
+      border: none;
+      color: #ccc;
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0 2px;
+      line-height: 1;
+    }
+    .btn-del:hover { color: #c62828; }
+
+    /* ── Add exercise form ── */
+    .add-form {
+      display: none;
+      padding: 10px 14px;
+      gap: 8px;
+      background: #fafafa;
+      border-top: 1px solid #eee;
+    }
+    .add-form.visible { display: flex; }
+    .add-form input {
+      flex: 1;
+      padding: 7px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .add-form button {
+      padding: 7px 12px;
+      border: none;
+      border-radius: 6px;
+      background: #2e7d32;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    /* ── Current exercise display ── */
+    .current-label {
+      font-size: 1rem;
+      font-weight: bold;
+      color: #2e7d32;
+      text-align: center;
+      min-height: 1.4em;
+    }
+
+    /* ── Canvas ── */
+    canvas { display: block; }
+
+    /* ── Buttons ── */
+    .buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    button.ctrl {
+      width: 100px;
+      padding: 11px 0;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: opacity 0.15s;
+    }
+    button.ctrl:active { opacity: 0.75; }
+
+    #btnStart { background: #2e7d32; color: #fff; }
+    #btnStop  { background: #c62828; color: #fff; }
+    #btnNext  { background: #1565c0; color: #fff; }
+  </style>
+</head>
+<body>
+
+  <h1>WORKOUT TIMER</h1>
+
+  <!-- Exercise list -->
+  <div class="exercise-panel">
+    <div class="panel-header">
+      <span>ÜBUNGEN</span>
+      <button class="btn-add" id="btnToggleAdd">+ Hinzufügen</button>
+    </div>
+    <ul class="exercise-list" id="exerciseList"></ul>
+    <div class="add-form" id="addForm">
+      <input type="text" id="newExName" placeholder="Übung eingeben…" maxlength="40"/>
+      <button id="btnConfirmAdd">OK</button>
+    </div>
+  </div>
+
+  <!-- Current exercise -->
+  <div class="current-label" id="currentLabel">Übung auswählen</div>
+
+  <!-- Stopwatch -->
+  <canvas id="clock" width="280" height="280"></canvas>
+
+  <!-- Controls -->
+  <div class="buttons">
+    <button class="ctrl" id="btnStart">START</button>
+    <button class="ctrl" id="btnStop">STOP</button>
+    <button class="ctrl" id="btnNext">WEITER ▶</button>
+  </div>
+
+  <script>
+    // ── Default exercises ──
+    let exercises = [
+      { name: 'Liegestütze',    time: 0 },
+      { name: 'Kniebeugen',     time: 0 },
+      { name: 'Ausfallschritte',time: 0 },
+      { name: 'Burpees',        time: 0 },
+      { name: 'Plank',          time: 0 },
+      { name: 'Mountain Climber',time: 0 },
+    ];
+    let current   = 0;
+    let elapsed   = 0;
+    let startedAt = null;
+    let running   = false;
+    let rafId     = null;
+
+    const pad = n => String(n).padStart(2, '0');
+
+    function fmtTime(ms) {
+      const s = Math.floor(ms / 1000);
+      return `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
+    }
+
+    // ── Canvas setup ──
+    const canvas = document.getElementById('clock');
+    const ctx    = canvas.getContext('2d');
+    const cx     = canvas.width  / 2;
+    const cy     = canvas.height / 2;
+    const R      = cx - 8;
+
+    function getElapsed() {
+      return running ? elapsed + (performance.now() - startedAt) : elapsed;
+    }
+
+    function draw() {
+      const ms       = getElapsed();
+      const totalSec = Math.floor(ms / 1000);
+      const m        = Math.floor(totalSec / 60) % 60;
+      const s        = totalSec % 60;
+      const cs       = Math.floor((ms % 1000) / 10);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Bezel
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      const bg = ctx.createRadialGradient(cx - 16, cy - 16, R * 0.6, cx, cy, R);
+      bg.addColorStop(0, '#555');
+      bg.addColorStop(1, '#111');
+      ctx.fillStyle = bg;
+      ctx.fill();
+
+      // Face
+      const faceR = R - 12;
+      ctx.beginPath();
+      ctx.arc(cx, cy, faceR, 0, Math.PI * 2);
+      ctx.fillStyle = '#f9f9f9';
+      ctx.fill();
+
+      // Tick marks
+      for (let i = 0; i < 60; i++) {
+        const a = (i / 60) * Math.PI * 2 - Math.PI / 2;
+        const major = i % 5 === 0;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * (faceR - 2),  cy + Math.sin(a) * (faceR - 2));
+        ctx.lineTo(cx + Math.cos(a) * (faceR - (major ? 13 : 6)), cy + Math.sin(a) * (faceR - (major ? 13 : 6)));
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth   = major ? 2.2 : 0.9;
+        ctx.lineCap     = 'round';
+        ctx.stroke();
+      }
+
+      // Numbers 0–55
+      ctx.fillStyle    = '#111';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font         = `bold ${Math.round(faceR * 0.15)}px Arial`;
+      const numR       = faceR - 30;
+      for (let n = 0; n < 12; n++) {
+        const a = (n / 12) * Math.PI * 2 - Math.PI / 2;
+        ctx.fillText(n * 5, cx + Math.cos(a) * numR, cy + Math.sin(a) * numR);
+      }
+
+      function drawHand(deg, len, w, color = '#111') {
+        const a = (deg - 90) * Math.PI / 180;
+        ctx.beginPath();
+        ctx.moveTo(cx - Math.cos(a) * len * 0.18, cy - Math.sin(a) * len * 0.18);
+        ctx.lineTo(cx + Math.cos(a) * len,        cy + Math.sin(a) * len);
+        ctx.strokeStyle = color;
+        ctx.lineWidth   = w;
+        ctx.lineCap     = 'round';
+        ctx.stroke();
+      }
+
+      // Minute hand
+      drawHand((m / 60) * 360, faceR * 0.60, 5);
+      // Second hand
+      drawHand(((s + cs / 100) / 60) * 360, faceR * 0.76, 1.8, '#cc0000');
+
+      // MM:SS box
+      const bW = 58, bH = 26, bX = cx - bW / 2, bY = cy + faceR * 0.40;
+      ctx.beginPath();
+      ctx.roundRect(bX, bY, bW, bH, 4);
+      ctx.fillStyle   = '#fff';
+      ctx.fill();
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+      ctx.fillStyle    = '#111';
+      ctx.font         = `bold ${Math.round(faceR * 0.145)}px Arial`;
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${pad(m)}:${pad(s)}`, cx, bY + bH / 2);
+
+      // Center cap
+      ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#111'; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#cc0000'; ctx.fill();
+
+      if (running) rafId = requestAnimationFrame(draw);
+    }
+
+    // ── Render exercise list ──
+    function renderList() {
+      const ul = document.getElementById('exerciseList');
+      ul.innerHTML = '';
+      exercises.forEach((ex, i) => {
+        const li = document.createElement('li');
+        if (i === current)       li.classList.add('active');
+        else if (ex.time > 0 && i < current) li.classList.add('done');
+
+        li.innerHTML = `
+          <div class="ex-index">${i + 1}</div>
+          <span class="ex-name">${ex.name}</span>
+          <span class="ex-time">${ex.time > 0 ? fmtTime(ex.time) : ''}</span>
+          <button class="btn-del" data-i="${i}" title="Löschen">✕</button>`;
+
+        li.addEventListener('click', e => {
+          if (e.target.classList.contains('btn-del')) return;
+          selectExercise(i);
+        });
+        ul.appendChild(li);
+      });
+      // scroll active item into view
+      const active = ul.querySelector('.active');
+      if (active) active.scrollIntoView({ block: 'nearest' });
+
+      // delete buttons
+      ul.querySelectorAll('.btn-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = parseInt(btn.dataset.i);
+          exercises.splice(i, 1);
+          if (current >= exercises.length) current = Math.max(0, exercises.length - 1);
+          resetTimer();
+          renderList();
+          updateLabel();
+        });
+      });
+    }
+
+    function updateLabel() {
+      const lbl = document.getElementById('currentLabel');
+      if (!exercises.length) { lbl.textContent = 'Keine Übungen'; return; }
+      lbl.textContent = `${current + 1}/${exercises.length} – ${exercises[current].name}`;
+    }
+
+    function selectExercise(i) {
+      if (running) stopTimer();
+      current = i;
+      resetTimer();
+      renderList();
+      updateLabel();
+    }
+
+    // ── Timer helpers ──
+    function stopTimer() {
+      if (!running) return;
+      elapsed  += performance.now() - startedAt;
+      running   = false;
+      cancelAnimationFrame(rafId);
+      draw();
+    }
+
+    function resetTimer() {
+      stopTimer();
+      elapsed   = 0;
+      startedAt = null;
+      draw();
+    }
+
+    // ── Controls ──
+    document.getElementById('btnStart').addEventListener('click', () => {
+      if (running || !exercises.length) return;
+      running   = true;
+      startedAt = performance.now();
+      rafId     = requestAnimationFrame(draw);
+    });
+
+    document.getElementById('btnStop').addEventListener('click', () => {
+      if (!running) return;
+      stopTimer();
+      exercises[current].time = elapsed;
+      renderList();
+    });
+
+    document.getElementById('btnNext').addEventListener('click', () => {
+      if (!exercises.length) return;
+      exercises[current].time = getElapsed();
+      stopTimer();
+      if (current < exercises.length - 1) {
+        current++;
+        elapsed = 0;
+      }
+      renderList();
+      updateLabel();
+      draw();
+    });
+
+    // ── Add exercise ──
+    document.getElementById('btnToggleAdd').addEventListener('click', () => {
+      const form = document.getElementById('addForm');
+      form.classList.toggle('visible');
+      if (form.classList.contains('visible'))
+        document.getElementById('newExName').focus();
+    });
+
+    function confirmAdd() {
+      const inp  = document.getElementById('newExName');
+      const name = inp.value.trim();
+      if (!name) return;
+      exercises.push({ name, time: 0 });
+      inp.value = '';
+      document.getElementById('addForm').classList.remove('visible');
+      renderList();
+      updateLabel();
+    }
+
+    document.getElementById('btnConfirmAdd').addEventListener('click', confirmAdd);
+    document.getElementById('newExName').addEventListener('keydown', e => {
+      if (e.key === 'Enter') confirmAdd();
+    });
+
+    // ── Init ──
+    renderList();
+    updateLabel();
+    draw();
+
+    // ── Service Worker ──
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
+
+</body>
+</html>
